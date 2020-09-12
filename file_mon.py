@@ -68,6 +68,9 @@ if __name__ == '__main__':
     mdb = db_util.init_db()
     cwd = os.getcwd()
     cfg = load_config()
+    if not cfg.get('include'):
+        print('please set the include directory at app_cfg.json: e.g.: D:\\')
+        exit(0)
     pending_modify = []
     event_handler = FileEventHandler(cfg["exclude"], pending_modify)
 
