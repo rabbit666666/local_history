@@ -6,3 +6,5 @@ __pycache__
 tmp
 history_db/
 export/
+
+app_cfg.json
