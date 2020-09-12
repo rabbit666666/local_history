@@ -97,7 +97,7 @@ class TimesPanel(wx.Panel):
         info._checked = True
         info._format = 0
         info._kind = 1
-        info._text = "时间"
+        info._text = "Modify Time"
 
         self.time_lst.InsertColumnInfo(0, info)
         self.time_lst.SetColumnWidth(0, 500)

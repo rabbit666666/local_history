@@ -108,7 +108,7 @@ class FilesPanel(wx.Panel):
         info._checked = True
         info._format = 0
         info._kind = 1
-        info._text = "文件"
+        info._text = "File Path"
 
         self.record_lst.InsertColumnInfo(0, info)
         self.record_lst.SetColumnWidth(0, 300)

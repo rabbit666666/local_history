@@ -54,9 +54,9 @@ class MainFrame(wx.Frame):
         menu_bar = wx.MenuBar()
 
         menu = wx.Menu()
-        item = menu.Append(-1, "重新加载\tCtrl-R", "New File")
+        item = menu.Append(-1, "Reload\tCtrl-R", "Reload the database")
         self.Bind(wx.EVT_MENU, self.on_reload, item)
-        menu_bar.Append(menu, "选项")
+        menu_bar.Append(menu, "Option")
 
         self.SetMenuBar(menu_bar)
 
