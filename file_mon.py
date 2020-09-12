@@ -65,12 +65,12 @@ def process_pending(mdb, pending_modify):
     pending_modify.clear()
 
 if __name__ == '__main__':
+    if not os.path.exists('app_cfg.json'):
+        print('please change app_cfg.json.sample to app_cfg.json, and setup it.')
+        exit(0)
     mdb = db_util.init_db()
     cwd = os.getcwd()
     cfg = load_config()
-    if not cfg.get('include'):
-        print('please set the include directory at app_cfg.json: e.g.: D:\\')
-        exit(0)
     pending_modify = []
     event_handler = FileEventHandler(cfg["exclude"], pending_modify)
 

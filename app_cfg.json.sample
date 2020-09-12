@@ -1,5 +1,6 @@
 {
   "include": [
+    "d:\\"
   ],
   "exclude": [
     {"text": "local_history_dog\\history_db", "need_wildcard": true},
