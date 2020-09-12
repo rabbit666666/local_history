@@ -1,1 +1,1 @@
-python Z:\local_history_dog\local_history_viewer.py
+python %cd%\local_history_viewer.py
