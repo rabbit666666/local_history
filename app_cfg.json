@@ -1,0 +1,15 @@
+{
+  "include": [
+    "z:\\",
+    "d:\\code\\"
+  ],
+  "exclude": [
+    {"text": "z:\\local_history_dog\\history_db", "need_wildcard": true},
+    {"text": "z:\\local_history_dog\\tmp", "need_wildcard": true},
+    {"text": "z:\\local_history_dog\\export", "need_wildcard": true},
+    {"text": "*.idea*", "need_wildcard": false},
+    {"text": "*.git*", "need_wildcard": false},
+    {"text": "*__pycache__*", "need_wildcard": false},
+    {"text": "*.vs*", "need_wildcard": false}
+  ]
+}
