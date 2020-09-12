@@ -68,7 +68,8 @@ _escape_table[ord('\n')] = u'\\n'
 _escape_table[ord('\r')] = u'\\r'
 _escape_table[ord('\032')] = u'\\Z'
 _escape_table[ord('"')] = u'\\"'
-_escape_table[ord("'")] = u"\\'"
+#_escape_table[ord("'")] = u"\\'"
+_escape_table[ord("'")] = u"''"
 
 def _escape_unicode(value, mapping=None):
     """escapes *value* without adding quote.

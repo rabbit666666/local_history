@@ -12,7 +12,9 @@ class CodePanel(wx.Panel):
         self.SetBackgroundColour(wx.Colour(79, 79, 79))
 
         self.imageCtrl = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.SUNKEN_BORDER | wx.TE_READONLY)
-        font1 = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL, False, 'Consolas')
+        font1 = wx.Font(11, wx.MODERN, wx.NORMAL, wx.NORMAL, False, 'Consolas')
+        self.imageCtrl.SetBackgroundColour(wx.BLACK)
+        self.imageCtrl.SetForegroundColour(wx.GREEN)
         self.imageCtrl.SetFont(font1)
 
         sizer = wx.BoxSizer(wx.VERTICAL)

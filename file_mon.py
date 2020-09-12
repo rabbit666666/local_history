@@ -1,6 +1,7 @@
 import json
 import time
 from functools import reduce
+import codecs
 
 import watchdog.observers.winapi as winapi
 from const import Actions
@@ -40,7 +41,7 @@ class FileEventHandler(FileSystemEventHandler):
             pending_modify.append(event.src_path)
 
 def load_config():
-    with open('app_cfg.json', 'r') as fd:
+    with codecs.open('app_cfg.json', 'r', encoding='utf8') as fd:
         cfg = json.loads(fd.read())
     exclude = cfg['exclude']
     for i, info in enumerate(exclude):
@@ -48,6 +49,10 @@ def load_config():
         if info['need_wildcard']:
             path = '*{}*'.format(path)
         exclude[i] = path
+    for i, dir in enumerate(cfg["include"]):
+        cfg["include"][i] = pu.norm_path(dir)
+    for i, dir in enumerate(cfg["snapshot"]):
+        cfg["snapshot"][i] = pu.norm_path(dir)
     return cfg
 
 def process_pending(mdb, pending_modify):
@@ -76,7 +81,6 @@ if __name__ == '__main__':
 
     observer = Observer()
     for inc in cfg["include"]:
-        inc = pu.norm_path(inc)
         observer.schedule(event_handler, inc, True)
     observer.start()
 

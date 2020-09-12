@@ -1,11 +1,10 @@
 import wx
 import wx.aui
 
+from engine import db_util as du
 from viewer import panel_frame
 from viewer.ProportionalSplitter import ProportionalSplitter
-from engine import db_util as du
 from viewer.file_panel import FilesPanel
-from table import file_content as fc
 from viewer.time_panel import TimesPanel
 
 class MainPanel(wx.Panel):

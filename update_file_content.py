@@ -58,7 +58,7 @@ def need_update(db, path):
         need = False
     return need
 
-def update_content(db):
+def update_content(db, show_log=True):
     cctx = zstandard.ZstdCompressor()
     files = uh.get_not_processed(db, action=Actions.updated, is_file=True)
     for f in files:
@@ -70,7 +70,8 @@ def update_content(db):
         new_content = cctx.compress(content)
         if is_same_content(latest_content, new_content):
             continue
-        print('update file:{}'.format(path))
+        if show_log:
+            print('update file:{}'.format(path))
         file_name = os.path.split(path)[1]
         file_type = os.path.splitext(path)[1][1:]
         info = {
