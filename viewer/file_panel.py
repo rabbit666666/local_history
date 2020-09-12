@@ -77,9 +77,9 @@ class FilterPanel(wx.Panel):
 
         self.filter_text = wx.TextCtrl(self, -1, "", style=wx.TE_PROCESS_ENTER)
         self.Bind(wx.EVT_TEXT_ENTER, self.on_filter, self.filter_text)
-        self.go_btn = wx.Button(self, wx.ID_ANY, "筛选", (0, 0), su.dpi_scale((80, -1)))
+        self.go_btn = wx.Button(self, wx.ID_ANY, "Filter", (0, 0), su.dpi_scale((80, -1)))
         self.go_btn.Bind(wx.EVT_BUTTON, self.on_filter)
-        self.export_btn = wx.Button(self, wx.ID_ANY, "导出", (0, 0), su.dpi_scale((80, -1)))
+        self.export_btn = wx.Button(self, wx.ID_ANY, "Export", (0, 0), su.dpi_scale((80, -1)))
         self.export_btn.Bind(wx.EVT_BUTTON, self.on_export)
 
         sizer.Add(self.filter_text, 1, wx.EXPAND | wx.CENTER)
@@ -171,5 +171,5 @@ class FilesPanel(wx.Panel):
             os.makedirs(dst_dir, exist_ok=True)
             dst_file = os.path.join(dst_dir, fname)
             open(dst_file, 'wb').write(ctx.decompress(content))
-        msg = '导出路径: {}'.format(os.path.abspath(root_dir))
-        wu.show_dialog('导出成功', msg)
+        msg = 'Export Path: {}'.format(os.path.abspath(root_dir))
+        wu.show_dialog('Export Success!', msg)

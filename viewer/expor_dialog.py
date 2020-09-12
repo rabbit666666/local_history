@@ -5,7 +5,7 @@ from pubsub import pub
 
 class ExportDialog(wx.Dialog):
     def __init__(self, parent, ts_lst):
-        wx.Dialog.__init__(self, parent, title="请选择截至日期", size=su.dpi_scale((-1, -1)), style=wx.DEFAULT_DIALOG_STYLE)
+        wx.Dialog.__init__(self, parent, title="Please select the deadline", size=su.dpi_scale((-1, -1)), style=wx.DEFAULT_DIALOG_STYLE)
 
         self.ts_lst = ts_lst
         dt_lst = tu.timestamp_lst_to_date_lst(ts_lst)
@@ -16,10 +16,10 @@ class ExportDialog(wx.Dialog):
         box1.Add(self.dt_combol, 1, wx.EXPAND)
 
         box2 = wx.BoxSizer(wx.HORIZONTAL)
-        export_btn = wx.Button(self, wx.ID_OK, "导出", (0,0), su.dpi_scale((80, -1)))
+        export_btn = wx.Button(self, wx.ID_OK, "Export", (0,0), su.dpi_scale((80, -1)))
         export_btn.Bind(wx.EVT_BUTTON, self.on_export)
 
-        cancel_btn = wx.Button(self, wx.ID_CANCEL, "取消", (0, 0), su.dpi_scale((80, -1)))
+        cancel_btn = wx.Button(self, wx.ID_CANCEL, "Cancel", (0, 0), su.dpi_scale((80, -1)))
 
         box2.Add(export_btn, 0, wx.LEFT | wx.CENTER)
         box2.Add(cancel_btn, 0, wx.LEFT | wx.CENTER)
