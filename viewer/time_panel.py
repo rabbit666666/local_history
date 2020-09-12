@@ -43,7 +43,7 @@ class TimeList(ULC.UltimateListCtrl, listmix.ColumnSorterMixin, listmix.ListCtrl
         main_mime, sub_mime = mime.split('/')
         if main_mime != 'text':
             path = os.path.join('tmp', new_file_name)
-            display_text = '无法显示, 请用应用程序打开:{}'.format(path)
+            display_text = "Can't display, please using the corresponding application open it:\n{}".format(path)
             os.makedirs('tmp', exist_ok=True)
             open(path, 'wb').write(content)
         else:
