@@ -1,4 +1,6 @@
 def strrmatch(strr, pattern):
+    strr = strr.lower()
+    pattern = pattern.lower()
     n = len(strr)
     m = len(pattern)
     if (m == 0):

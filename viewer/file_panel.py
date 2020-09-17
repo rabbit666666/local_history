@@ -12,6 +12,8 @@ import viewer.wx_util as wu
 import shutil
 import zstandard
 from viewer.kmp import strrmatch
+import multiprocessing as mp
+import engine.listutil as lu
 
 class FileList(ULC.UltimateListCtrl, listmix.ColumnSorterMixin, listmix.ListCtrlAutoWidthMixin):
     def __init__(self, parent, columns, db, time_panel):
@@ -109,6 +111,8 @@ class FilesPanel(wx.Panel):
         info._format = 0
         info._kind = 1
         info._text = "File Path"
+        self.num_proc = os.cpu_count() - 1
+        self.pool = mp.Pool(processes=self.num_proc)
 
         self.record_lst.InsertColumnInfo(0, info)
         self.record_lst.SetColumnWidth(0, 300)
@@ -130,14 +134,26 @@ class FilesPanel(wx.Panel):
         self.filter_text = message
         self.reload_files()
 
-    def get_filtered_file(self):
-        file_lst = fc.get_file_names(self.mdb)
+    @staticmethod
+    def filter_file(args):
+        file_lst, filter_text = args
         filterd_files = []
         for file in file_lst:
-            if not self.filter_text:
+            if not filter_text:
                 filterd_files.append(file)
-            elif strrmatch(file, self.filter_text):
+            elif strrmatch(file, filter_text):
                 filterd_files.append(file)
+        return filterd_files
+
+    def get_filtered_file(self):
+        file_lst = fc.get_file_names(self.mdb)
+        args = []
+        for fs in lu.chunk_to_n_part(file_lst, self.num_proc):
+            args.append((fs, self.filter_text))
+        filterd_files = []
+        rst = self.pool.map(FilesPanel.filter_file, args)
+        for files in rst:
+            filterd_files.extend(files)
         return filterd_files
 
     def reload_files(self):
