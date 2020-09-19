@@ -1,5 +1,7 @@
 import os
 import wx
+import json
+import timestring
 import wx.lib.mixins.listctrl as listmix
 from wx.lib.agw import ultimatelistctrl as ULC
 
@@ -14,6 +16,77 @@ import zstandard
 from viewer.kmp import strrmatch
 import multiprocessing as mp
 import engine.listutil as lu
+
+class FilterPanel(wx.Panel):
+    def __init__(self, db, file_panel):
+        wx.Panel.__init__(self, file_panel, wx.ID_ANY, size=(-1, -1), style=wx.NO_BORDER)
+
+        self.mdb = db
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.include_filter_text = wx.TextCtrl(self, -1, "include filter(*)", style=wx.TE_PROCESS_ENTER)
+        self.Bind(wx.EVT_TEXT_ENTER, self.on_filter, self.include_filter_text)
+        self.exclude_filter_text = wx.TextCtrl(self, -1, "exclude filter(*)", style=wx.TE_PROCESS_ENTER)
+        self.go_btn = wx.Button(self, wx.ID_ANY, "Filter", (0, 0), su.dpi_scale((80, -1)))
+        self.go_btn.Bind(wx.EVT_BUTTON, self.on_filter)
+        self.export_btn = wx.Button(self, wx.ID_ANY, "Export", (0, 0), su.dpi_scale((80, -1)))
+        self.export_btn.Bind(wx.EVT_BUTTON, self.on_export)
+
+        sizer2.Add(self.go_btn, 1, wx.LEFT | wx.CENTER)
+        sizer2.Add(self.export_btn, 1, wx.LEFT | wx.CENTER)
+
+        sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+        self.cal_from_text = wx.TextCtrl(self, wx.ID_ANY, "Date From(yyyy-mm-dd)", (0, 0), su.dpi_scale((80, -1)))
+        self.cal_to_text = wx.TextCtrl(self, wx.ID_ANY, "Date To(yyyy-mm-dd)", (0, 0), su.dpi_scale((80, -1)))
+
+        sizer3.Add(self.cal_from_text, 1, wx.EXPAND)
+        sizer3.Add(self.cal_to_text, 1, wx.EXPAND)
+
+        sizer.Add(sizer2, 1, wx.EXPAND)
+        sizer.Add(self.include_filter_text, 1, wx.EXPAND | wx.CENTER)
+        sizer.Add(self.exclude_filter_text, 1, wx.EXPAND | wx.CENTER)
+        sizer.Add(sizer3, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+    def date_to_timestamp(self, date):
+        ts = -1
+        try:
+            ts = timestring.Date(date, '%y-%m-%d').to_unixtime()
+            ts = int(ts)
+        except:
+            pass
+        return ts
+
+    def get_filter_text(self):
+        include_text = ''
+        exclude_text = ''
+        if self.include_filter_text.GetValue() != 'include filter':
+            include_text = self.include_filter_text.GetValue()
+        if self.exclude_filter_text.GetValue() != 'exclude filter':
+            exclude_text = self.exclude_filter_text.GetValue()
+        return include_text, exclude_text
+
+    def on_filter(self, _evt):
+        include_filter, exclude_filter = self.get_filter_text()
+        date_from = self.cal_from_text.GetValue()
+        date_to = self.cal_to_text.GetValue()
+        msg = {
+            'include_text': include_filter,
+            'exclude_text': exclude_filter,
+        }
+        ts1 = self.date_to_timestamp(date_from)
+        ts2 = self.date_to_timestamp(date_to)
+        if ts1 != -1:
+            msg['date_from'] = ts1
+        if ts2 != -1:
+            msg['date_to'] = ts2
+        msg = json.dumps(msg)
+        pub.sendMessage("on_filter", message=msg)
+
+    def on_export(self, _evt):
+        pub.sendMessage("on_export")
 
 class FileList(ULC.UltimateListCtrl, listmix.ColumnSorterMixin, listmix.ListCtrlAutoWidthMixin):
     def __init__(self, parent, columns, db, time_panel):
@@ -70,32 +143,6 @@ class FileList(ULC.UltimateListCtrl, listmix.ColumnSorterMixin, listmix.ListCtrl
         else:
             return -cmp_value
 
-class FilterPanel(wx.Panel):
-    def __init__(self, db, file_panel):
-        wx.Panel.__init__(self, file_panel, wx.ID_ANY, size=(-1, -1), style=wx.NO_BORDER)
-
-        self.mdb = db
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.filter_text = wx.TextCtrl(self, -1, "", style=wx.TE_PROCESS_ENTER)
-        self.Bind(wx.EVT_TEXT_ENTER, self.on_filter, self.filter_text)
-        self.go_btn = wx.Button(self, wx.ID_ANY, "Filter", (0, 0), su.dpi_scale((80, -1)))
-        self.go_btn.Bind(wx.EVT_BUTTON, self.on_filter)
-        self.export_btn = wx.Button(self, wx.ID_ANY, "Export", (0, 0), su.dpi_scale((80, -1)))
-        self.export_btn.Bind(wx.EVT_BUTTON, self.on_export)
-
-        sizer.Add(self.filter_text, 1, wx.EXPAND | wx.CENTER)
-        sizer.Add(self.go_btn, 0, wx.LEFT | wx.CENTER)
-        sizer.Add(self.export_btn, 0, wx.LEFT | wx.CENTER)
-        self.SetSizer(sizer)
-
-    def on_filter(self, _evt):
-        filter = self.filter_text.GetValue()
-        pub.sendMessage("on_filter", message=filter)
-
-    def on_export(self, _evt):
-        pub.sendMessage("on_export")
-
 class FilesPanel(wx.Panel):
     def __init__(self, parent, db, time_panel):
         wx.Panel.__init__(self, parent)
@@ -103,7 +150,7 @@ class FilesPanel(wx.Panel):
         self.record_lst = FileList(self, 1, db, time_panel)
         self.filter_panel = FilterPanel(db, self)
         self.mdb = db
-        self.filter_text = ""
+        self.filter_msg = {}
 
         info = ULC.UltimateListItem()
         info._mask = wx.LIST_MASK_TEXT | wx.LIST_MASK_IMAGE | wx.LIST_MASK_FORMAT
@@ -125,31 +172,40 @@ class FilesPanel(wx.Panel):
         pub.subscribe(self.start_export, "on_export")
         pub.subscribe(self.execute_export, "execute_export")
 
+    def convert_filter_text(self, filter_text):
+        if filter_text:
+            if filter_text[0] != '*':
+                filter_text = '*{}'.format(filter_text)
+            if filter_text[-1] != '*':
+                filter_text = '{}*'.format(filter_text)
+        return filter_text
+
     def on_filter(self, message):
-        if message:
-            if message[0] != '*':
-                message = '*{}'.format(message)
-            if message[-1] != '*':
-                message = '{}*'.format(message)
-        self.filter_text = message
+        self.filter_msg = json.loads(message)
+        self.filter_msg['include_text'] = self.convert_filter_text(self.filter_msg['include_text'])
+        self.filter_msg['exclude_text'] = self.convert_filter_text(self.filter_msg['exclude_text'])
         self.reload_files()
 
     @staticmethod
     def filter_file(args):
-        file_lst, filter_text = args
+        file_lst, include_text, exclude_text = args
         filterd_files = []
         for file in file_lst:
-            if not filter_text:
+            if not include_text:
                 filterd_files.append(file)
-            elif strrmatch(file, filter_text):
+            elif strrmatch(file, include_text) and not strrmatch(file, exclude_text):
                 filterd_files.append(file)
         return filterd_files
 
     def get_filtered_file(self):
-        file_lst = fc.get_file_names(self.mdb)
+        date_from = self.filter_msg.get('date_from')
+        date_to = self.filter_msg.get('date_to')
+        include_text = self.filter_msg.get('include_text')
+        exclude_text = self.filter_msg.get('exclude_text')
+        file_lst = fc.get_file_names(self.mdb, date_from, date_to)
         args = []
         for fs in lu.chunk_to_n_part(file_lst, self.num_proc):
-            args.append((fs, self.filter_text))
+            args.append((fs, include_text, exclude_text))
         filterd_files = []
         rst = self.pool.map(FilesPanel.filter_file, args)
         for files in rst:
@@ -186,6 +242,9 @@ class FilesPanel(wx.Panel):
             dst_dir = os.path.join(root_dir, sub_dir[1:])
             os.makedirs(dst_dir, exist_ok=True)
             dst_file = os.path.join(dst_dir, fname)
-            open(dst_file, 'wb').write(ctx.decompress(content))
+            if not content:
+                assert False, '{} is empty'.format(dst_file)
+            else:
+                open(dst_file, 'wb').write(ctx.decompress(content))
         msg = 'Export Path: {}'.format(os.path.abspath(root_dir))
         wu.show_dialog('Export Success!', msg)
