@@ -62,9 +62,9 @@ class FilterPanel(wx.Panel):
     def get_filter_text(self):
         include_text = ''
         exclude_text = ''
-        if self.include_filter_text.GetValue() != 'include filter':
+        if self.include_filter_text.GetValue() != 'include filter(*)':
             include_text = self.include_filter_text.GetValue()
-        if self.exclude_filter_text.GetValue() != 'exclude filter':
+        if self.exclude_filter_text.GetValue() != 'exclude filter(*)':
             exclude_text = self.exclude_filter_text.GetValue()
         return include_text, exclude_text
 
@@ -191,9 +191,11 @@ class FilesPanel(wx.Panel):
         file_lst, include_text, exclude_text = args
         filterd_files = []
         for file in file_lst:
+            if exclude_text and strrmatch(file, exclude_text):
+                continue
             if not include_text:
                 filterd_files.append(file)
-            elif strrmatch(file, include_text) and not strrmatch(file, exclude_text):
+            elif strrmatch(file, include_text):
                 filterd_files.append(file)
         return filterd_files
 
