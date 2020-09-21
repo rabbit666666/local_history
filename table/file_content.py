@@ -79,13 +79,13 @@ def get_file_update_time(mdb, file):
     return new_times
 
 def get_file_names(mdb, date_from, date_to):
-    if date_from and date_to:
+    if date_from > 0 and date_to > 0:
         sql = 'SELECT DISTINCT {} FROM {} WHERE {}>={} AND {}<={}'.format(
             COL_FILE, tbl_name, COL_TIMESTAMP, date_from, COL_TIMESTAMP, date_to)
-    elif date_from:
+    elif date_from > 0:
         sql = 'SELECT DISTINCT {} FROM {} WHERE {}>={}'.format(
             COL_FILE, tbl_name, COL_TIMESTAMP, date_from)
-    elif date_to:
+    elif date_to > 0:
         sql = 'SELECT DISTINCT {} FROM {} WHERE {}<={}'.format(
             COL_FILE, tbl_name, COL_TIMESTAMP, date_to)
     else:

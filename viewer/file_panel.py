@@ -17,18 +17,58 @@ from viewer.kmp import strrmatch
 import multiprocessing as mp
 import engine.listutil as lu
 
+def convert_filter_text(filter_text):
+    filter_lst = []
+    if filter_text:
+        for text in filter_text.split(';'):
+            if not text:
+                continue
+            if text[0] != '*':
+                text = '*{}'.format(text)
+            if text[-1] != '*':
+                text = '{}*'.format(text)
+            filter_lst.append(text)
+    return filter_lst
+
+class FilterMessage:
+    def __init__(self):
+        self.include_lst = []
+        self.exclude_lst = []
+        self.date_from = -1
+        self.date_to = -1
+
+    def __str__(self):
+        msg = {
+            'include': self.include_lst,
+            'exclude': self.exclude_lst,
+            'date_from': self.date_from,
+            'date_to': self.date_to,
+        }
+        return json.dumps(msg)
+
+    @staticmethod
+    def from_json_string(json_str):
+        msg = json.loads(json_str)
+        filter_msg = FilterMessage()
+        filter_msg.include_lst = msg['include']
+        filter_msg.exclude_lst = msg['exclude']
+        filter_msg.date_from = msg['date_from']
+        filter_msg.date_to = msg['date_to']
+        return filter_msg
+
 class FilterPanel(wx.Panel):
+    INCLUDE_FILTER_BLANK_TEXT = "Include All"
+    EXCLUDE_FILTER_BLANK_TEXT = "Exclude None"
     def __init__(self, db, file_panel):
         wx.Panel.__init__(self, file_panel, wx.ID_ANY, size=(-1, -1), style=wx.NO_BORDER)
 
         self.mdb = db
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer1 = wx.BoxSizer(wx.HORIZONTAL)
         sizer2 = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.include_filter_text = wx.TextCtrl(self, -1, "include filter(*)", style=wx.TE_PROCESS_ENTER)
+        self.include_filter_text = wx.TextCtrl(self, -1, self.INCLUDE_FILTER_BLANK_TEXT, style=wx.TE_PROCESS_ENTER)
         self.Bind(wx.EVT_TEXT_ENTER, self.on_filter, self.include_filter_text)
-        self.exclude_filter_text = wx.TextCtrl(self, -1, "exclude filter(*)", style=wx.TE_PROCESS_ENTER)
+        self.exclude_filter_text = wx.TextCtrl(self, -1, self.EXCLUDE_FILTER_BLANK_TEXT, style=wx.TE_PROCESS_ENTER)
         self.go_btn = wx.Button(self, wx.ID_ANY, "Filter", (0, 0), su.dpi_scale((80, -1)))
         self.go_btn.Bind(wx.EVT_BUTTON, self.on_filter)
         self.export_btn = wx.Button(self, wx.ID_ANY, "Export", (0, 0), su.dpi_scale((80, -1)))
@@ -62,28 +102,26 @@ class FilterPanel(wx.Panel):
     def get_filter_text(self):
         include_text = ''
         exclude_text = ''
-        if self.include_filter_text.GetValue() != 'include filter(*)':
+        if self.include_filter_text.GetValue() != self.INCLUDE_FILTER_BLANK_TEXT:
             include_text = self.include_filter_text.GetValue()
-        if self.exclude_filter_text.GetValue() != 'exclude filter(*)':
+        if self.exclude_filter_text.GetValue() != self.EXCLUDE_FILTER_BLANK_TEXT:
             exclude_text = self.exclude_filter_text.GetValue()
-        return include_text, exclude_text
+        include_lst = convert_filter_text(include_text)
+        exclude_lst = convert_filter_text(exclude_text)
+        return include_lst, exclude_lst
 
     def on_filter(self, _evt):
         include_filter, exclude_filter = self.get_filter_text()
         date_from = self.cal_from_text.GetValue()
         date_to = self.cal_to_text.GetValue()
-        msg = {
-            'include_text': include_filter,
-            'exclude_text': exclude_filter,
-        }
         ts1 = self.date_to_timestamp(date_from)
         ts2 = self.date_to_timestamp(date_to)
-        if ts1 != -1:
-            msg['date_from'] = ts1
-        if ts2 != -1:
-            msg['date_to'] = ts2
-        msg = json.dumps(msg)
-        pub.sendMessage("on_filter", message=msg)
+        msg = FilterMessage()
+        msg.include_lst = include_filter
+        msg.exclude_lst = exclude_filter
+        msg.date_from = ts1
+        msg.date_to = ts2
+        pub.sendMessage("on_filter", message=str(msg))
 
     def on_export(self, _evt):
         pub.sendMessage("on_export")
@@ -150,7 +188,7 @@ class FilesPanel(wx.Panel):
         self.record_lst = FileList(self, 1, db, time_panel)
         self.filter_panel = FilterPanel(db, self)
         self.mdb = db
-        self.filter_msg = {}
+        self.filter_msg = FilterMessage()
 
         info = ULC.UltimateListItem()
         info._mask = wx.LIST_MASK_TEXT | wx.LIST_MASK_IMAGE | wx.LIST_MASK_FORMAT
@@ -158,7 +196,7 @@ class FilesPanel(wx.Panel):
         info._format = 0
         info._kind = 1
         info._text = "File Path"
-        self.num_proc = os.cpu_count() - 1
+        self.num_proc = max(os.cpu_count() - 1, 1)
         self.pool = mp.Pool(processes=self.num_proc)
 
         self.record_lst.InsertColumnInfo(0, info)
@@ -172,42 +210,41 @@ class FilesPanel(wx.Panel):
         pub.subscribe(self.start_export, "on_export")
         pub.subscribe(self.execute_export, "execute_export")
 
-    def convert_filter_text(self, filter_text):
-        if filter_text:
-            if filter_text[0] != '*':
-                filter_text = '*{}'.format(filter_text)
-            if filter_text[-1] != '*':
-                filter_text = '{}*'.format(filter_text)
-        return filter_text
-
     def on_filter(self, message):
-        self.filter_msg = json.loads(message)
-        self.filter_msg['include_text'] = self.convert_filter_text(self.filter_msg['include_text'])
-        self.filter_msg['exclude_text'] = self.convert_filter_text(self.filter_msg['exclude_text'])
+        self.filter_msg = FilterMessage.from_json_string(message)
         self.reload_files()
 
     @staticmethod
+    def is_match_filter(file, filter_lst):
+        if not filter_lst:
+            return False
+        match = False
+        for filter_text in filter_lst:
+            if strrmatch(file, filter_text):
+                if file.find('.py') != -1:
+                    print(file, filter_text, ', is matched')
+                match = True
+                break
+        return match
+
+    @staticmethod
     def filter_file(args):
-        file_lst, include_text, exclude_text = args
+        file_lst, include_filters, exclude_filters = args
         filterd_files = []
         for file in file_lst:
-            if exclude_text and strrmatch(file, exclude_text):
+            if FilesPanel.is_match_filter(file, exclude_filters):
                 continue
-            if not include_text:
+            if not include_filters:
                 filterd_files.append(file)
-            elif strrmatch(file, include_text):
+            elif FilesPanel.is_match_filter(file, include_filters):
                 filterd_files.append(file)
         return filterd_files
 
     def get_filtered_file(self):
-        date_from = self.filter_msg.get('date_from')
-        date_to = self.filter_msg.get('date_to')
-        include_text = self.filter_msg.get('include_text')
-        exclude_text = self.filter_msg.get('exclude_text')
-        file_lst = fc.get_file_names(self.mdb, date_from, date_to)
+        file_lst = fc.get_file_names(self.mdb, self.filter_msg.date_from, self.filter_msg.date_to)
         args = []
         for fs in lu.chunk_to_n_part(file_lst, self.num_proc):
-            args.append((fs, include_text, exclude_text))
+            args.append((fs, self.filter_msg.include_lst, self.filter_msg.exclude_lst))
         filterd_files = []
         rst = self.pool.map(FilesPanel.filter_file, args)
         for files in rst:
