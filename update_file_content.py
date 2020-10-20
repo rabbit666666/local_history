@@ -10,6 +10,7 @@ from const import Actions
 from engine import db_util
 from table import file_content as fc
 from table import update_history as uh
+from tqdm import tqdm
 import hashlib
 
 def set_file_processed(db, file):
@@ -61,14 +62,20 @@ def need_update(db, path):
 def update_content(db, show_log=True):
     cctx = zstandard.ZstdCompressor()
     files = uh.get_not_processed(db, action=Actions.updated, is_file=True)
+    print("files count:{}".format(len(files)))
+    t = tqdm(total=len(files))
     for f in files:
         path = f['path']
         if not need_update(db, path):
+            set_file_processed(db, path)
+            t.update()
             continue
         content = read_file(path, -1)
         latest_content = fc.get_latest_content(db, path, None)
         new_content = cctx.compress(content)
         if is_same_content(latest_content, new_content):
+            set_file_processed(db, path)
+            t.update()
             continue
         if show_log:
             print('update file:{}'.format(path))
@@ -83,7 +90,10 @@ def update_content(db, show_log=True):
         }
         fc.update_file_info(db, info)
         set_file_processed(db, path)
+        t.update()
     db.commit()
+    t.close()
+    print('update loop complete')
 
 def signal_handler_interupt(sig, frame):
     print('update_file_content exit(Ctrl-C).')
